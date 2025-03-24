@@ -16,6 +16,8 @@ using System.IO;
 using UnityEngine;
 using DaggerfallWorkshop.Game.Utility.ModSupport;
 using System.Diagnostics.CodeAnalysis;
+using UnityEngine.Networking;
+using System;
 
 /// <summary>
 /// Handles import and injection of custom sounds and songs with the purpose of providing modding support.
@@ -47,7 +49,7 @@ public static class SoundReplacement
     /// <returns>True if sound is found.</returns>
     public static bool TryImportSound(SoundClips sound, [NotNullWhen(true)] out AudioClip? audioClip)
     {
-        return TryImportAudioClip(sound.ToString(), ".wav", false, out audioClip);
+        return TryImportAudioClip($"{sound}.wav", AudioType.WAV, false, out audioClip);
     }
 
     /// <summary>
@@ -58,7 +60,7 @@ public static class SoundReplacement
     /// <returns>True if song is found.</returns>
     public static bool TryImportSong(SongFiles song, [NotNullWhen(true)] out AudioClip? audioClip)
     {
-        return TryImportAudioClip(song.ToString(), ".ogg", true, out audioClip);
+        return TryImportAudioClip($"{song}.ogg", AudioType.OGGVORBIS, true, out audioClip);
     }
 
     /// <summary>
@@ -79,39 +81,37 @@ public static class SoundReplacement
     /// <summary>
     /// Import sound data from modding locations as an audio clip.
     /// </summary>
-    private static bool TryImportAudioClip(string name, string extension, bool streaming, [NotNullWhen(true)] out AudioClip? audioClip)
+    private static bool TryImportAudioClip(string fileName, AudioType audioType, bool isStreaming, [NotNullWhen(true)] out AudioClip? audioClip)
     {
-        if (DaggerfallUnity.Settings.AssetInjection)
+        audioClip = null;
+
+        if (DaggerfallUnity.Settings.AssetInjection && !string.IsNullOrWhiteSpace(fileName))
         {
             // Seek from loose files
-            string path = Path.Combine(soundPath, name + extension);
+            string path = Path.Combine(soundPath, fileName);
             if (File.Exists(path))
             {
-                WWW www = new WWW("file://" + path); // TODO: Replace with UnityWebRequest
-                if (streaming)
-                {
-                    audioClip = www.GetAudioClip(true, true);
-                }
-                else
-                {
-                    audioClip = www.GetAudioClip();
-                    DaggerfallUnity.Instance.StartCoroutine(LoadAudioData(www, audioClip));
-                }
-                return true;
+                AudioClip? clip = null;
+                var onComplete = (AudioClip? ac) => { clip = ac; };
+                var isCompressed = false; // TODO: Do we want to compress audio in memory?
+
+                DaggerfallUnity.Instance.StartCoroutine(WebRequestAudio(path, onComplete, isStreaming, isCompressed, audioType));
+
+                audioClip = clip;
+                return audioClip != null;
             }
 
             // Seek from mods
-            if (ModManager.Instance != null && ModManager.Instance.TryGetAsset(name, false, out audioClip))
+            if (ModManager.Instance != null && ModManager.Instance.TryGetAsset(fileName, false, out audioClip))
             {
                 if (audioClip != null && (audioClip.preloadAudioData || audioClip.LoadAudioData()))
                     return true;
 
-                Debug.LogErrorFormat("Failed to load audiodata for audioclip {0}", name);
+                Debug.LogErrorFormat("Failed to load audiodata for audioclip {0}", fileName);
             }
         }
 
-        audioClip = null;
-        return false;
+        return audioClip != null;
     }
 
     /// <summary>
@@ -144,17 +144,23 @@ public static class SoundReplacement
         return false;
     }
 
-    /// <summary>
-    /// Load audio data from WWW in background.
-    /// </summary>
-    private static IEnumerator LoadAudioData(WWW www, AudioClip clip) // TODO: Replace with UnityWebRequest
+    private static IEnumerator WebRequestAudio(string path, Action<AudioClip?> onComplete, bool isStreaming = false, bool isCompressed = false, AudioType audioType = AudioType.UNKNOWN)
     {
-        yield return www;
+        using var wr = UnityWebRequestMultimedia.GetAudioClip($"file://{path}", audioType);
+        if (wr.downloadHandler is not DownloadHandlerAudioClip handler) yield break;
 
-        if (clip.loadState == AudioDataLoadState.Failed)
-            Debug.LogErrorFormat("Failed to load audioclip: {0}", www.error);
+        handler.streamAudio = isStreaming;
+        handler.compressed = isCompressed;
 
-        www.Dispose();
+        yield return wr.SendWebRequest();
+
+        if (wr.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogError($"Failed to load audioclip: {wr.error}");
+        }
+
+        var audioClip = handler.audioClip;
+        onComplete?.Invoke(audioClip);
     }
 
     #endregion
