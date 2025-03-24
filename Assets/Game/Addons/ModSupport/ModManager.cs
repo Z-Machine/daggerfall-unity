@@ -402,7 +402,7 @@ namespace DaggerfallWorkshop.Game.Utility.ModSupport
         /// If multiple mods contain an asset with given name, priority is defined by load order.
         /// </remarks>
         /// <returns>True if asset is found and loaded sucessfully.</returns>
-        public bool TryGetAsset<T>(string name, bool? clone, out T asset) where T : UnityEngine.Object
+        public bool TryGetAsset<T>(string name, bool? clone, [NotNullWhen(true)] out T? asset) where T : UnityEngine.Object
         {
             var query = from mod in EnumerateEnabledModsReverse()
 #if UNITY_EDITOR
