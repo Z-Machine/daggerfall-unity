@@ -159,8 +159,7 @@ public static class SoundReplacement
             Debug.LogError($"Failed to load audioclip: {wr.error}");
         }
 
-        var audioClip = handler.audioClip;
-        onComplete?.Invoke(audioClip);
+        onComplete?.Invoke(handler.audioClip);
     }
 
     #endregion
