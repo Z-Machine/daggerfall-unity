@@ -5,6 +5,10 @@ Shader "Hidden/PostProcessing/FinalPass"
         #pragma multi_compile __ FXAA FXAA_LOW
         #pragma multi_compile __ FXAA_KEEP_ALPHA FXAA_NO_ALPHA
 
+        // @dfu-start
+        #pragma shader_feature _PPV2_DITHER_ON
+        // @dfu-end
+
         #pragma vertex VertUVTransform
         #pragma fragment Frag
 
@@ -86,7 +90,13 @@ Shader "Hidden/PostProcessing/FinalPass"
             }
             #endif
 
-            color.rgb = Dither(color.rgb, i.texcoord);
+            // @dfu-start
+            #ifdef _PPV2_DITHER_ON
+                color.rgb = Dither(color.rgb, i.texcoord);
+                color.r = 0.0;
+            #endif
+            // @dfu-end
+
             return color;
         }
 

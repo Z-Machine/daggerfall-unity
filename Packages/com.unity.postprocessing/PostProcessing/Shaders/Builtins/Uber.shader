@@ -14,6 +14,10 @@ Shader "Hidden/PostProcessing/Uber"
         // #pragma multi_compile __ COLOR_GRADING_LDR_2D COLOR_GRADING_HDR_2D COLOR_GRADING_HDR_3D
         // #pragma multi_compile __ STEREO_INSTANCING_ENABLED STEREO_DOUBLEWIDE_TARGET
 
+        // @dfu-start
+        #pragma shader_feature _PPV2_DITHER_ON
+        // @dfu-end
+
         #pragma vertex VertUVTransform
         #pragma fragment FragUber
 
@@ -241,7 +245,12 @@ Shader "Hidden/PostProcessing/Uber"
                 }
                 #endif
 
-                output.rgb = Dither(output.rgb, i.texcoord);
+                // @dfu-start
+                #ifdef _PPV2_DITHER_ON
+                    output.rgb = Dither(output.rgb, i.texcoord);
+                    output.r = 0.0;
+                #endif
+                // @dfu-end
             }
             #else
             {
