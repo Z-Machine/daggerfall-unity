@@ -10,7 +10,7 @@
 		Lighting Off 
        Cull Off
        ZWrite On
-       ZTest Always
+       // ZTest Always
        Fog { Mode Off }
 
 		Pass
@@ -47,9 +47,9 @@
            sampler2D _MainTex;
            sampler2D _CameraDepthTexture;
 
-			fixed4 frag (v2f i) : SV_Target
+			half4 frag (v2f i) : SV_Target
 			{
-				fixed4 color = tex2D(_MainTex, i.texcoord);
+				half4 color = tex2D(_MainTex, i.texcoord);
 #ifdef EXCLUDE_SKY
               float depth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.texcoord);
               depth = Linear01Depth(depth);
@@ -60,7 +60,7 @@
 #endif
                 
               // Decrease color depth to 4 bits per component
-              return fixed4(GammaToLinearSpace(round(LinearToGammaSpace(color.rgb) * 15.0) / 15.0), color.a);
+              return half4(GammaToLinearSpace(round(LinearToGammaSpace(color.rgb) * 15.0) / 15.0), color.a);
 			}
 			ENDCG
 		}

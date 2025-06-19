@@ -9,7 +9,9 @@
 	{
 		// No culling or depth
        Lighting Off 
-	   Cull Off ZWrite On ZTest Always
+	   Cull Off
+	   ZWrite On
+	   // ZTest Always
        Fog { Mode Off } 
 
 		Pass
@@ -47,12 +49,12 @@
             sampler2D _CameraDepthTexture;
             sampler3D _Lut;
             
-	        fixed4 frag (v2f i) : SV_Target
+	        half4 frag (v2f i) : SV_Target
 	        {
                 // Explore color space!
                 // return fixed4(GammaToLinearSpace(tex3D(_Lut, half3(i.texcoord, frac(_Time.x)))), 1.0);
 
-                fixed4 color = tex2D(_MainTex, i.texcoord);
+                half4 color = tex2D(_MainTex, i.texcoord);
 #ifdef EXCLUDE_SKY
                 float depth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.texcoord);
                 depth = Linear01Depth(depth);
@@ -62,7 +64,7 @@
                   return color;
 #endif
                 
-                return fixed4(GammaToLinearSpace(tex3D(_Lut, LinearToGammaSpace(color.rgb)).rgb), color.a);
+                return half4(GammaToLinearSpace(tex3D(_Lut, LinearToGammaSpace(color.rgb)).rgb), color.a);
             }
 			ENDCG
 		}
